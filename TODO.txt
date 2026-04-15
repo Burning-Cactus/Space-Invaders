@@ -1,0 +1,17 @@
+Add UFOs
+	raylib.EndDrawing()
+Add alien types
+Add destructible houses
+-Both bullets and enemies can clear houses.
+
+Have enemies shoot back
+
+Use collision masks for bullets
+Add animations
+Particle effects
+Ambient sounds
+
+Score tracking
+Synchronize movements with row rather than entire horde
+
+Add window resizing behavior
