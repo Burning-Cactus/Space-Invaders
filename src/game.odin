@@ -1,12 +1,12 @@
 package game
 
 import "core:fmt"
-import "vendor:raylib"
+import rl "vendor:raylib"
 
 Vec2 :: [2]i32
 
 shouldGameClose :: proc() -> bool {
-	return raylib.WindowShouldClose()
+	return rl.WindowShouldClose()
 }
 
 width :: 448
@@ -21,9 +21,9 @@ Screen :: enum {
 screen := Screen.MAIN_MENU
 
 init :: proc() {
-	raylib.InitWindow(width, height, "Space Invaders")
-	raylib.InitAudioDevice()
-	raylib.SetTargetFPS(60)
+	rl.InitWindow(width, height, "Space Invaders")
+	rl.InitAudioDevice()
+	rl.SetTargetFPS(60)
 
 	initRenderSystem(width, height)
 	initAudioSystem()
@@ -32,8 +32,8 @@ init :: proc() {
 }
 
 shutdown :: proc() {
-	raylib.CloseAudioDevice()
-	raylib.CloseWindow()
+	rl.CloseAudioDevice()
+	rl.CloseWindow()
 }
 
 update :: proc() {
@@ -73,76 +73,75 @@ startGame :: proc() {
 }
 
 gameLoop :: proc() {
-	using game
 	for !shouldGameClose() {
-		if raylib.IsKeyPressed(.T) {
-			paused = !paused
-			fmt.printf("Paused! %t\n", paused)
+		if rl.IsKeyPressed(.T) {
+			game.paused = !game.paused
+			fmt.printf("Paused! %t\n", game.paused)
 		}
 
-		if paused {
-			raylib.BeginDrawing()
+		if game.paused {
+			rl.BeginDrawing()
 			drawScene()
-			raylib.DrawText("Paused", 100, 100, 12, raylib.WHITE)
-			raylib.EndDrawing()
+			rl.DrawText("Paused", 100, 100, 12, rl.WHITE)
+			rl.EndDrawing()
 
 			continue
 		}
 		handleInput()
 
-		gameTick += 1
+		game.gameTick += 1
 
-		length := len(enemies)
-		if gameTick % u64(tempo) == 0 {
-			if shouldTurn {
+		length := len(game.enemies)
+		if game.gameTick % u64(game.tempo) == 0 {
+			if game.shouldTurn {
 				for i := 0; i < length; i += 1 {
-					enemies[i].position.y += 16
+					game.enemies[i].position.y += 16
 				}
-				hordeDirection *= -1
-				shouldTurn = false
+				game.hordeDirection *= -1
+				game.shouldTurn = false
 			} else {
 				for i := 0; i < length; i += 1 {
-					enemy := enemies[i]
-					enemy.position.x += 4 * hordeDirection
-					enemies[i] = enemy
+					enemy := game.enemies[i]
+					enemy.position.x += 4 * game.hordeDirection
+					game.enemies[i] = enemy
 
-					if hordeDirection > 0 {
-						if enemy.position.x >= width - 32 do shouldTurn = true
+					if game.hordeDirection > 0 {
+						if enemy.position.x >= width - 32 do game.shouldTurn = true
 					} else {
-						if enemy.position.x <= 32 do shouldTurn = true
+						if enemy.position.x <= 32 do game.shouldTurn = true
 					}
 				}
 			}
-			if gameTick % 60 == 0 do enemyShootBullet(enemies[0])
+			if game.gameTick % 60 == 0 do enemyShootBullet(game.enemies[0])
 		}
 
-		bulletCount := len(bullets)
+		bulletCount := len(game.bullets)
 		for i := 0; i < bulletCount; i += 1 {
-			bullet := bullets[i]
+			bullet := game.bullets[i]
 			bullet.position += bullet.velocity
 			// Collisions
-			checkBulletCollision(&bullet, &enemies)
+			checkBulletCollision(&bullet, &(game.enemies))
 			if bullet.position.y < -bullet.size.y do bullet.isAlive = false
-			bullets[i] = bullet
+			game.bullets[i] = bullet
 		}
 
 		// Remove dead entities
 		for i := bulletCount - 1; i >= 0; i -= 1 {
-			if !bullets[i].isAlive {
-				unordered_remove(&bullets, i)
+			if !game.bullets[i].isAlive {
+				unordered_remove(&(game.bullets), i)
 				bulletCount -= 1
 			}
 		}
 
 		for i := length - 1; i >= 0; i -= 1 {
-			if !enemies[i].isAlive {
-				unordered_remove(&enemies, i)
+			if !game.enemies[i].isAlive {
+				unordered_remove(&(game.enemies), i)
 				length -= 1
 			}
 		}
-		raylib.BeginDrawing()
+		rl.BeginDrawing()
 		drawScene()
-		raylib.EndDrawing()
+		rl.EndDrawing()
 	}
 }
 
@@ -173,16 +172,16 @@ enemyShootBullet :: proc(enemy: Entity) {
 }
 
 handleInput :: proc() {
-	using raylib
-	using game
-	if IsKeyDown(.A) do player.position.x -= 6
-	if IsKeyDown(.D) do player.position.x += 6
+	player := game.player
+	if rl.IsKeyDown(.A) do player.position.x -= 6
+	if rl.IsKeyDown(.D) do player.position.x += 6
 	if player.position.x < 0 do player.position.x = 0
 	if player.position.x + player.size.x > width do player.position.x = width - player.size.x
-
-	if IsKeyPressed(.SPACE) {
+	
+	if rl.IsKeyPressed(.SPACE) {
 		playerShootBullet(player)
 	}
+	game.player = player
 }
 
 buildEnemyGroup :: proc(enemies: ^[dynamic]Entity, width: i32 = 11, height: i32 = 5) {
@@ -246,24 +245,22 @@ createHouse :: proc(pos: [2]i32, size: [2]i32) -> House {
 //
 // Rendering code
 // Entities
-playerSprite: raylib.Texture2D
-alienSprite: raylib.Texture2D
+playerSprite: rl.Texture2D
+alienSprite: rl.Texture2D
 
 // Gui
-heartSprite: raylib.Texture2D
+heartSprite: rl.Texture2D
 
-backgroundTexture : raylib.Texture2D
+backgroundTexture : rl.Texture2D
 
 initRenderSystem:: proc(width, height: i32) {
-	playerSprite = raylib.LoadTexture("assets/Tank.png")
-	alienSprite = raylib.LoadTexture("assets/Invader.png")
-	heartSprite = raylib.LoadTexture("assets/Heart.png")
+	playerSprite = rl.LoadTexture("assets/Tank.png")
+	alienSprite = rl.LoadTexture("assets/Invader.png")
+	heartSprite = rl.LoadTexture("assets/Heart.png")
 	backgroundTexture = makeBackgroundSky(width, height)
 }
 
-makeBackgroundSky :: proc(width: i32, height: i32) -> raylib.Texture2D {
-	using raylib
-
+makeBackgroundSky :: proc(width: i32, height: i32) -> rl.Texture2D {
 
 	skyline := height / 2
 	ground := height - 16
@@ -271,42 +268,41 @@ makeBackgroundSky :: proc(width: i32, height: i32) -> raylib.Texture2D {
 	cellWidth :: 30
 	cellHeight :: 30
 
-	background := GenImageColor(width, height, raylib.BLACK)
+	background := rl.GenImageColor(width, height, rl.BLACK)
 	for i: i32 = 0; i < width; i += 1 {
 		for j: i32 = 0; j < skyline; j += 1 {
 			cellX: i32 = i % cellWidth - cellWidth / 2
 			cellY: i32 = j % cellHeight - cellHeight / 2
 			if abs(cellX) < 2 && abs(cellY) < 2 {
-				ImageDrawPixel(&background, i, j, raylib.WHITE)
+				rl.ImageDrawPixel(&background, i, j, rl.WHITE)
 			}
 		}
 	}
 
-	buildingColor :: raylib.Color{68,66,88,225}
-	buildingBackgroundColor :: raylib.Color{40,38,57,225}
+	buildingColor :: rl.Color{68,66,88,225}
+	buildingBackgroundColor :: rl.Color{40,38,57,225}
 
-	ImageDrawRectangle(&background, 80, ground - 160, 80, 160, buildingColor)
-
-	ImageDrawRectangle(&background, 0, ground, width, height, raylib.DARKGREEN)
-	return LoadTextureFromImage(background)
+	rl.ImageDrawRectangle(&background, 80, ground - 160, 80, 160, buildingColor)
+	rl.ImageDrawRectangle(&background, 0, ground, width, height, rl.DARKGREEN)
+	return rl.LoadTextureFromImage(background)
 }
 
 // Draws the scene in raylib. BeginDrawing and EndDrawing must be called outside of this function.
 drawScene :: proc() {
-	using game
-	raylib.ClearBackground(raylib.BLACK)
+	player := game.player
+	rl.ClearBackground(rl.BLACK)
 	drawBackground(width, height)
 	player.draw(player)
 
-	bulletCount := len(bullets)
+	bulletCount := len(game.bullets)
 	for i := 0; i < bulletCount; i += 1 {
-		bullet := bullets[i]
+		bullet := game.bullets[i]
 		bullet.draw(bullet)
 	}
 
-	length := len(enemies)
+	length := len(game.enemies)
 	for i := 0; i < length; i += 1 {
-		enemy := enemies[i]
+		enemy := game.enemies[i]
 		enemy.draw(enemy)
 	}
 
@@ -314,46 +310,43 @@ drawScene :: proc() {
 }
 
 drawGui :: proc() {
-	using game
-	for i: i32 = 0; i < lives; i += 1 {
-		raylib.DrawTexture(heartSprite, i * 20 + 8, 8, raylib.WHITE)
+	for i: i32 = 0; i < game.lives; i += 1 {
+		rl.DrawTexture(heartSprite, i * 20 + 8, 8, rl.WHITE)
 	}
 }
 
 drawPlayer :: proc(player: Entity) {
-	raylib.DrawTexture(playerSprite, player.position.x, player.position.y, raylib.WHITE)
+	rl.DrawTexture(playerSprite, player.position.x, player.position.y, rl.WHITE)
 }
 
 drawEnemy :: proc(enemy: Entity) {
-	raylib.DrawTexture(alienSprite, enemy.position.x, enemy.position.y, raylib.GREEN)
+	rl.DrawTexture(alienSprite, enemy.position.x, enemy.position.y, rl.GREEN)
 }
 
 drawBullet :: proc(bullet: Entity) {
-	raylib.DrawRectangle(bullet.position.x, bullet.position.y, bullet.size.x, bullet.size.y, raylib.WHITE)
+	rl.DrawRectangle(bullet.position.x, bullet.position.y, bullet.size.x, bullet.size.y, rl.WHITE)
 }
 
 
 drawBackground :: proc(width: i32, height: i32) {
-	using raylib
-	DrawTexture(backgroundTexture, 0, 0, raylib.WHITE)
+	rl.DrawTexture(backgroundTexture, 0, 0, rl.WHITE)
 }
 
-laserSound: raylib.Sound
+laserSound: rl.Sound
 
 // Audio code
 initAudioSystem :: proc() {
-	laserSound = raylib.LoadSound("assets/Laser.wav")
+	laserSound = rl.LoadSound("assets/Laser.wav")
 }
 
 menuLoop :: proc() {
 	for screen == .MAIN_MENU && !shouldGameClose() {
-		using raylib
-		BeginDrawing()
+		rl.BeginDrawing()
 		drawBackground(width, height)
-		DrawText("SPACE INVADERS", width / 2 - 140, height / 3, 36, raylib.GREEN)
-		EndDrawing()
+		rl.DrawText("SPACE INVADERS", width / 2 - 140, height / 3, 36, rl.GREEN)
+		rl.EndDrawing()
 
-		if IsKeyPressed(.SPACE) {
+		if rl.IsKeyPressed(.SPACE) {
 			screen = .GAME
 		}
 	}
